@@ -5,19 +5,18 @@ Goal: wrap a LLaMA-1B checkpoint (TinyLlama or compatible) with lightweight rout
 
 What you get
 ------------
-- Router modules injected into selected decoder layers (every layer by default, configurable).
-- Base LLaMA weights frozen; only router parameters train.
-- Soft gating during training; optional hard-skip threshold at inference.
-- Compute-usage penalty to steer toward a target fraction of active layers.
-- HF Trainer-based training loop with a tiny preprocessing pipeline for text datasets.
+Router modules injected into selected decoder layers (every layer by default, configurable).
 
-Quick start (single GPU)
-------------------------
-1) Install deps:
-```
-pip install -r requirements.txt
-```
-2) Train routers on a small text set (example uses wikitext-2-raw-v1; swap with your data):
+Base LLaMA weights frozen; only router parameters train.
+
+Soft gating during training; optional hard-skip threshold at inference.
+
+Compute-usage penalty to steer toward a target fraction of active layers.
+
+HF Trainer-based training loop with a tiny preprocessing pipeline for text datasets.
+
+
+1) Install deps and train routers on a small text set (example uses wikitext-2-raw-v1):
 ```
 python train_router.py \
   --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T \
@@ -33,12 +32,12 @@ python train_router.py \
 ```
 3) Inference with hard skips (example threshold=0.5):
 ```
-python -c "from transformers import AutoTokenizer; \
-from mod_router import load_with_routers, set_router_mode; \
-tok=AutoTokenizer.from_pretrained('outputs/router_tuned'); \
-model=load_with_routers('outputs/router_tuned', hard_threshold=0.5); \
-set_router_mode(model, hard_threshold=0.5); \
-print(tok.decode(model.generate(tok('hello', return_tensors='pt').input_ids, max_new_tokens=30)[0]))"
+from transformers import AutoTokenizer
+from mod_router import load_with_routers, set_router_mode
+tok=AutoTokenizer.from_pretrained('outputs/router_tuned')
+model=load_with_routers('outputs/router_tuned', hard_threshold=0.5)
+set_router_mode(model, hard_threshold=0.5)
+print(tok.decode(model.generate(tok('hello', return_tensors='pt').input_ids, max_new_tokens=30)[0]))
 ```
 
 Design notes
@@ -48,9 +47,3 @@ Design notes
 - Layer selection: by default every decoder layer gets a router; `--router_pattern every_other` only wraps every second layer; `--router_start` / `--router_stop` bound the range and you can lock first/last layers via args.
 - Inference: training is soft (no speedup), inference can enable `hard_threshold` so low-gate layers skip compute. Threshold tuning controls the accuracy/speed trade-off.
 
-Next steps
-----------
-- Anneal `router_lambda` (e.g., 0 → 0.02 over first 10–20% steps) to ease stability.
-- Profile `hard_threshold` and pattern (all layers vs every_other) for your latency target.
-- Add entropy/diversity penalties if routers collapse to always-on or always-off.
-- Try token-level vs sequence-mean gating (edit `TokenRouter.forward`).
