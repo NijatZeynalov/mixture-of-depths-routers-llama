@@ -31,7 +31,7 @@ python train_router.py \
   --target_active_ratio 0.7
 ```
 3) Inference with hard skips (example threshold=0.5):
-```
+```python
 from transformers import AutoTokenizer
 from mod_router import load_with_routers, set_router_mode
 tok=AutoTokenizer.from_pretrained('outputs/router_tuned')
